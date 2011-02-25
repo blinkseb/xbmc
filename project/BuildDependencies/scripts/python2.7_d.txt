@@ -1,0 +1,2 @@
+; filename                        source of the file
+python2.7.1.7z                    http://xbmcwindeps.googlecode.com/files

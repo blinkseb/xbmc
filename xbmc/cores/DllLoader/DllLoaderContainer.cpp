@@ -331,7 +331,9 @@ void DllLoaderContainer::UnloadPythonDlls()
   {
     char* name = m_dlls[i]->GetName();
 
-#ifdef HAVE_LIBPYTHON2_6
+#ifdef HAVE_LIBPYTHON2_7
+    if (strstr(name, "python27.dll") != NULL)
+#elif (defined HAVE_LIBPYTHON2_6
     if (strstr(name, "python26.dll") != NULL)
 #else
     if (strstr(name, "python24.dll") != NULL)

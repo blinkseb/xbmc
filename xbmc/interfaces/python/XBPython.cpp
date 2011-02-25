@@ -24,7 +24,9 @@
   #include "config.h"
 #endif
 #if (defined USE_EXTERNAL_PYTHON)
-  #if (defined HAVE_LIBPYTHON2_6)
+  #if (defined HAVE_LIBPYTHON2_7)
+    #include <python2.7/Python.h>
+  #elif (defined HAVE_LIBPYTHON2_6)
     #include <python2.6/Python.h>
   #elif (defined HAVE_LIBPYTHON2_5)
     #include <python2.5/Python.h>
@@ -49,10 +51,16 @@
 #include "utils/TimeUtils.h"
 
 #ifndef _LINUX
-#if (defined USE_EXTERNAL_PYTHON) && (defined HAVE_LIBPYTHON2_6)
-#define PYTHON_DLL "special://xbmcbin/system/python/python26.dll"
+#if (defined USE_EXTERNAL_PYTHON)
+  #if (defined HAVE_LIBPYTHON2_7)
+    #define PYTHON_DLL "special://xbmcbin/system/python/python27.dll"
+  #elif (defined HAVE_LIBPYTHON2_6)
+    #define PYTHON_DLL "special://xbmcbin/system/python/python26.dll"
+  #else
+    #define PYTHON_DLL "special://xbmcbin/system/python/python24.dll"
+  #endif
 #else
-#define PYTHON_DLL "special://xbmcbin/system/python/python24.dll"
+  #define PYTHON_DLL "special://xbmcbin/system/python/python24.dll"
 #endif
 #else
 #if defined(__APPLE__)
@@ -62,7 +70,9 @@
 #define PYTHON_DLL "special://xbmcbin/system/python/python24-x86-osx.so"
 #endif
 #elif defined(__x86_64__)
-#if (defined HAVE_LIBPYTHON2_6)
+#if (defined HAVE_LIBPYTHON2_7)
+#define PYTHON_DLL "special://xbmcbin/system/python/python27-x86_64-linux.so"
+#elif (defined HAVE_LIBPYTHON2_6)
 #define PYTHON_DLL "special://xbmcbin/system/python/python26-x86_64-linux.so"
 #elif (defined HAVE_LIBPYTHON2_5)
 #define PYTHON_DLL "special://xbmcbin/system/python/python25-x86_64-linux.so"
@@ -70,7 +80,9 @@
 #define PYTHON_DLL "special://xbmcbin/system/python/python24-x86_64-linux.so"
 #endif
 #elif defined(_POWERPC)
-#if (defined HAVE_LIBPYTHON2_6)
+#if (defined HAVE_LIBPYTHON2_7)
+#define PYTHON_DLL "special://xbmcbin/system/python/python27-powerpc-linux.so"
+#elif (defined HAVE_LIBPYTHON2_6)
 #define PYTHON_DLL "special://xbmcbin/system/python/python26-powerpc-linux.so"
 #elif (defined HAVE_LIBPYTHON2_5)
 #define PYTHON_DLL "special://xbmcbin/system/python/python25-powerpc-linux.so"
@@ -78,7 +90,9 @@
 #define PYTHON_DLL "special://xbmcbin/system/python/python24-powerpc-linux.so"
 #endif
 #elif defined(_POWERPC64)
-#if (defined HAVE_LIBPYTHON2_6)
+#if (defined HAVE_LIBPYTHON2_7)
+#define PYTHON_DLL "special://xbmcbin/system/python/python27-powerpc64-linux.so"
+#elif (defined HAVE_LIBPYTHON2_6)
 #define PYTHON_DLL "special://xbmcbin/system/python/python26-powerpc64-linux.so"
 #elif (defined HAVE_LIBPYTHON2_5)
 #define PYTHON_DLL "special://xbmcbin/system/python/python25-powerpc64-linux.so"
@@ -86,7 +100,9 @@
 #define PYTHON_DLL "special://xbmcbin/system/python/python24-powerpc64-linux.so"
 #endif
 #elif defined(_ARMEL)
-#if (defined HAVE_LIBPYTHON2_6)
+#if (defined HAVE_LIBPYTHON2_7)
+#define PYTHON_DLL "special://xbmc/system/python/python27-arm.so"
+#elif (defined HAVE_LIBPYTHON2_6)
 #define PYTHON_DLL "special://xbmc/system/python/python26-arm.so"
 #elif (defined HAVE_LIBPYTHON2_5)
 #define PYTHON_DLL "special://xbmc/system/python/python25-arm.so"
@@ -94,7 +110,9 @@
 #define PYTHON_DLL "special://xbmc/system/python/python24-arm.so"
 #endif
 #else /* !__x86_64__ && !__powerpc__ */
-#if (defined HAVE_LIBPYTHON2_6)
+#if (defined HAVE_LIBPYTHON2_7)
+#define PYTHON_DLL "special://xbmcbin/system/python/python27-i486-linux.so"
+#elif (defined HAVE_LIBPYTHON2_6)
 #define PYTHON_DLL "special://xbmcbin/system/python/python26-i486-linux.so"
 #elif (defined HAVE_LIBPYTHON2_5)
 #define PYTHON_DLL "special://xbmcbin/system/python/python25-i486-linux.so"
@@ -358,7 +376,7 @@ void XBPython::Initialize()
         !FileExist("special://xbmc/system/python/DLLs/bz2.pyd") ||
         !FileExist("special://xbmc/system/python/DLLs/pyexpat.pyd") ||
         !FileExist("special://xbmc/system/python/DLLs/select.pyd") ||
-#ifndef HAVE_LIBPYTHON2_6
+#if (! defined HAVE_LIBPYTHON2_6) && (! defined HAVE_LIBPYTHON2_7)
         !FileExist("special://xbmc/system/python/DLLs/zlib.pyd") ||
 #endif
         !FileExist("special://xbmc/system/python/DLLs/unicodedata.pyd"))

@@ -271,7 +271,7 @@ extern "C"
   FUNCTION(PyErr_Clear)
   FUNCTION12(PyObject_SetAttrString)
 
-#if (defined USE_EXTERNAL_PYTHON) && (defined HAVE_LIBPYTHON2_6)
+#if (defined USE_EXTERNAL_PYTHON) && ((defined HAVE_LIBPYTHON2_6) || (defined HAVE_LIBPYTHON2_7))
   FUNCTION8(PyRun_SimpleStringFlags)
   FUNCTION20(PyRun_StringFlags)
   FUNCTION28(PyRun_FileExFlags)
@@ -410,7 +410,7 @@ extern "C"
       dll.ResolveExport(DLL_FUNCTION(PyErr_Clear)) &&
       dll.ResolveExport(DLL_FUNCTION(PyObject_SetAttrString)) &&
       dll.ResolveExport(DLL_FUNCTION(PyErr_ExceptionMatches)) &&
-#if (defined USE_EXTERNAL_PYTHON) && (defined HAVE_LIBPYTHON2_6)
+#if (defined USE_EXTERNAL_PYTHON) && ((defined HAVE_LIBPYTHON2_6) || (defined HAVE_LIBPYTHON2_7))
       dll.ResolveExport(DLL_FUNCTION(PyRun_SimpleStringFlags)) &&
       dll.ResolveExport(DLL_FUNCTION(PyRun_StringFlags)) &&
       dll.ResolveExport(DLL_FUNCTION(PyRun_FileExFlags)) &&

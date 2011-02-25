@@ -425,7 +425,9 @@ bool FunctionNeedsWrapping(Export *exports, const char *functionName, void **fix
 bool Win32DllLoader::ResolveImport(const char *dllName, const char *functionName, void **fixup)
 {
   char *dll = GetName();
-#ifdef HAVE_LIBPYTHON2_6
+#ifdef HAVE_LIBPYTHON2_7
+  if (strstr(dll, "python27.dll")
+#elif (defined HAVE_LIBPYTHON2_6)
   if (strstr(dll, "python26.dll")
 #else
   if (strstr(dll, "python24.dll")

@@ -4917,6 +4917,9 @@
     <ClInclude Include="..\..\xbmc\utils\GlobalsHandling.h">
       <Filter>utils</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\xbmc\python.h">
+      <Filter>interfaces\python</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\xbmc\win32\XBMC.ico">

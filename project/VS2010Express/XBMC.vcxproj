@@ -1436,6 +1436,7 @@
     <ClInclude Include="..\..\xbmc\programs\GUIWindowPrograms.h" />
     <ClInclude Include="..\..\xbmc\programs\ProgramDatabase.h" />
     <ClInclude Include="..\..\xbmc\programs\Shortcut.h" />
+    <ClInclude Include="..\..\xbmc\python.h" />
     <ClInclude Include="..\..\xbmc\rendering\dx\GUIWindowTestPatternDX.h" />
     <ClInclude Include="..\..\xbmc\rendering\dx\RenderSystemDX.h" />
     <ClInclude Include="..\..\xbmc\rendering\gl\GUIWindowTestPatternGL.h" />

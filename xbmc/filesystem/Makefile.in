@@ -49,6 +49,7 @@ SRCS=AddonsDirectory.cpp \
      LastFMDirectory.cpp \
      MultiPathDirectory.cpp \
      MultiPathFile.cpp \
+     MultiTrackDirectory.cpp \
      MusicDatabaseDirectory.cpp \
      MusicFileDirectory.cpp \
      MusicSearchDirectory.cpp \

@@ -697,6 +697,16 @@ bool CFileItem::IsBDFile() const
   return (strFileName.Equals("index.bdmv"));
 }
 
+bool CFileItem::IsBD() const
+{
+  return URIUtils::IsBD(m_strPath);
+}
+
+bool CFileItem::IsOpticalMedia() const
+{
+  return URIUtils::IsOpticalMedia(m_strPath);
+}
+
 bool CFileItem::IsRAR() const
 {
   return URIUtils::IsRAR(m_strPath);

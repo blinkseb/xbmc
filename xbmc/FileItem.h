@@ -106,6 +106,8 @@ public:
   bool IsOpticalMediaFile() const;
   bool IsDVDFile(bool bVobs = true, bool bIfos = true) const;
   bool IsBDFile() const;
+  bool IsBD() const;
+  bool IsOpticalMedia() const;
   bool IsRAR() const;
   bool IsZIP() const;
   bool IsCBZ() const;

@@ -83,6 +83,8 @@ public:
   static bool IsVideoDb(const CStdString& strFile);
   static bool IsVTP(const CStdString& strFile);
   static bool IsZIP(const CStdString& strFile);
+  static bool IsOpticalMedia(const CStdString& strFile);
+  static bool IsBD(const CStdString& strFile);
 
   static void AddSlashAtEnd(CStdString& strFolder);
   static bool HasSlashAtEnd(const CStdString& strFile);
@@ -103,5 +105,8 @@ public:
     AddFileToFolder(strFolder, strFile, result);
     return result;
   }
+
+private:
+  static bool IsOpticalMedia(const CStdString& strFile, const CStdString& strPrefix);
 };
 

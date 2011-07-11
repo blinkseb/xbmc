@@ -458,10 +458,15 @@ bool URIUtils::IsHD(const CStdString& strFileName)
   return url.IsLocal();
 }
 
-bool URIUtils::IsDVD(const CStdString& strFile)
+bool URIUtils::IsOpticalMedia(const CStdString& strFile)
+{
+  return IsDVD(strFile) ? true : IsBD(strFile);
+}
+
+bool URIUtils::IsOpticalMedia(const CStdString& strFile, const CStdString& strPrefix)
 {
 #if defined(_WIN32)
-  if (strFile.Left(6).Equals("dvd://"))
+  if (strFile.Left(strPrefix.length()).Equals(strPrefix))
     return true;
 
   if(strFile.Mid(1) != ":\\"
@@ -473,11 +478,21 @@ bool URIUtils::IsDVD(const CStdString& strFile)
 #else
   CStdString strFileLow = strFile;
   strFileLow.MakeLower();
-  if (strFileLow == "d:/"  || strFileLow == "d:\\"  || strFileLow == "d:" || strFileLow == "iso9660://" || strFileLow == "udf://" || strFileLow == "dvd://1" )
+  if (strFileLow == "d:/"  || strFileLow == "d:\\"  || strFileLow == "d:" || strFileLow == "iso9660://" || strFileLow == "udf://" || strFile.Left(strPrefix.length()).Equals(strPrefix) )
     return true;
 #endif
 
   return false;
+}
+
+bool URIUtils::IsDVD(const CStdString& strFile)
+{
+  return IsOpticalMedia(strFile, "dvd://");
+}
+
+bool URIUtils::IsBD(const CStdString& strFile)
+{
+  return IsOpticalMedia(strFile, "bd://");
 }
 
 bool URIUtils::IsStack(const CStdString& strFile)

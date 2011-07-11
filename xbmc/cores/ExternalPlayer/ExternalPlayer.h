@@ -23,6 +23,7 @@
 
 #include "cores/IPlayer.h"
 #include "threads/Thread.h"
+#include "FileItem.h"
 
 class CGUIDialogOK;
 
@@ -98,7 +99,7 @@ private:
   int m_speed;
   int m_totalTime;
   int m_time;
-  CStdString m_launchFilename;
+  CFileItem m_item;
   HWND m_hwndXbmc; 
 #if defined(_WIN32)
   POINT m_ptCursorpos;

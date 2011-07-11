@@ -38,6 +38,7 @@
 #include "utils/XMLUtils.h"
 #include "utils/TimeUtils.h"
 #include "utils/log.h"
+#include "storage/MediaManager.h"
 #if defined(_WIN32)
   #include "Windows.h"
   #ifdef HAS_IRSERVERSUITE
@@ -98,8 +99,8 @@ bool CExternalPlayer::OpenFile(const CFileItem& file, const CPlayerOptions &opti
   try
   {
     m_bIsPlaying = true;
-    m_launchFilename = file.m_strPath;
-    CLog::Log(LOGNOTICE, "%s: %s", __FUNCTION__, m_launchFilename.c_str());
+    m_item = file;
+    CLog::Log(LOGNOTICE, "%s: %s", __FUNCTION__, file.m_strPath.c_str());
     Create();
 
     return true;
@@ -135,21 +136,21 @@ bool CExternalPlayer::IsPlaying() const
 
 void CExternalPlayer::Process()
 {
-  CStdString mainFile = m_launchFilename;
+  CStdString mainFile = m_item.m_strPath;
   CStdString archiveContent = "";
 
   if (m_args.find("{0}") == std::string::npos)
   {
     // Unwind archive names
-    CURL url(m_launchFilename);
-    CStdString protocol = url.GetProtocol();
-    if (protocol == "zip" || protocol == "rar"/* || protocol == "iso9660" ??*/)
+    if (m_item.IsZIP() || m_item.IsRAR())
     {
-      mainFile = url.GetHostName();
-      archiveContent = url.GetFileName();
+      mainFile = m_item.GetAsUrl().GetHostName();
+      archiveContent = m_item.GetAsUrl().GetFileName();
     }
-    if (protocol == "musicdb")
-      mainFile = CFileMusicDatabase::TranslateUrl(url);
+    if (m_item.IsMusicDb())
+      mainFile = CFileMusicDatabase::TranslateUrl(m_item.GetAsUrl());
+    if (m_item.IsOpticalMedia())
+      mainFile = g_mediaManager.TranslateDevicePath("");
   }
 
   if (m_filenameReplacers.size() > 0) 
@@ -226,9 +227,6 @@ void CExternalPlayer::Process()
 #endif
     strFName = m_filename;
 
-  strFArgs.append("\"");
-  strFArgs.append(m_filename);
-  strFArgs.append("\" ");
   strFArgs.append(m_args);
 
   int nReplaced = strFArgs.Replace("{0}", mainFile);
@@ -236,7 +234,8 @@ void CExternalPlayer::Process()
   if (!nReplaced)
     nReplaced = strFArgs.Replace("{1}", mainFile) + strFArgs.Replace("{2}", archiveContent);
 
-  if (!nReplaced)
+  // Maybe the user delibarately set args without replacement sequence. We should add the filename only if strFArgs is empty
+  if (strFArgs.empty())
   {
     strFArgs.append(" \"");
     strFArgs.append(mainFile);

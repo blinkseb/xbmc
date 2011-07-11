@@ -136,7 +136,7 @@ bool CExternalPlayer::IsPlaying() const
 
 void CExternalPlayer::Process()
 {
-  CStdString mainFile = m_item.m_strPath;
+  CStdString mediaFilename = m_item.m_strPath;
   CStdString archiveContent = "";
 
   if (m_args.find("{0}") == std::string::npos)
@@ -144,13 +144,13 @@ void CExternalPlayer::Process()
     // Unwind archive names
     if (m_item.IsZIP() || m_item.IsRAR())
     {
-      mainFile = m_item.GetAsUrl().GetHostName();
+      mediaFilename = m_item.GetAsUrl().GetHostName();
       archiveContent = m_item.GetAsUrl().GetFileName();
     }
     if (m_item.IsMusicDb())
-      mainFile = CFileMusicDatabase::TranslateUrl(m_item.GetAsUrl());
+      mediaFilename = CFileMusicDatabase::TranslateUrl(m_item.GetAsUrl());
     if (m_item.IsOpticalMedia())
-      mainFile = g_mediaManager.TranslateDevicePath("");
+      mediaFilename = g_mediaManager.TranslateDevicePath("");
   }
 
   if (m_filenameReplacers.size() > 0) 
@@ -175,7 +175,7 @@ void CExternalPlayer::Process()
         continue;
       }
 
-      if (regExp.RegFind(mainFile) > -1) 
+      if (regExp.RegFind(mediaFilename) > -1) 
       {
         CStdString strPat = vecSplit[1];
         strPat.Replace(",,",",");
@@ -191,54 +191,37 @@ void CExternalPlayer::Process()
         bool bGlobal = vecSplit[3].Find('g') > -1;
         bool bStop = vecSplit[3].Find('s') > -1;
         int iStart = 0;
-        while ((iStart = regExp.RegFind(mainFile, iStart)) > -1)
+        while ((iStart = regExp.RegFind(mediaFilename, iStart)) > -1)
         {
           int iLength = regExp.GetFindLen();
-          mainFile = mainFile.Left(iStart) + regExp.GetReplaceString(strRep.c_str()) + mainFile.Mid(iStart+iLength);
+          mediaFilename = mediaFilename.Left(iStart) + regExp.GetReplaceString(strRep.c_str()) + mediaFilename.Mid(iStart+iLength);
           if (!bGlobal)
             break;
         }
-        CLog::Log(LOGINFO, "%s: File matched:'%s' (RE='%s',Rep='%s') new filename:'%s'.", __FUNCTION__, strMatch.c_str(), strPat.c_str(), strRep.c_str(), mainFile.c_str());
+        CLog::Log(LOGINFO, "%s: File matched:'%s' (RE='%s',Rep='%s') new filename:'%s'.", __FUNCTION__, strMatch.c_str(), strPat.c_str(), strRep.c_str(), mediaFilename.c_str());
         if (bStop) break;
       }
     }
   }
 
-  CLog::Log(LOGNOTICE, "%s: Player : %s", __FUNCTION__, m_filename.c_str());
-  CLog::Log(LOGNOTICE, "%s: File   : %s", __FUNCTION__, mainFile.c_str());
+  CLog::Log(LOGNOTICE, "%s: Player : %s", __FUNCTION__, m_playerFilename.c_str());
+  CLog::Log(LOGNOTICE, "%s: File   : %s", __FUNCTION__, mediaFilename.c_str());
   CLog::Log(LOGNOTICE, "%s: Content: %s", __FUNCTION__, archiveContent.c_str());
   CLog::Log(LOGNOTICE, "%s: Args   : %s", __FUNCTION__, m_args.c_str());
   CLog::Log(LOGNOTICE, "%s: Start", __FUNCTION__);
 
-  // make sure we surround the arguments with quotes where necessary
-  CStdString strFName;
-  CStdString strFArgs;
-#if defined(_WIN32)
-  // W32 batch-file handline
-  if (m_filename.Right(4) == ".bat" || m_filename.Right(4) == ".cmd")
-  {
-    // MSDN says you just need to do this, but cmd's handing of spaces and
-    // quotes is soo broken it seems to work much better if you just omit
-    // lpApplicationName and enclose the module in lpCommandLine in quotes
-    //strFName = "cmd.exe";
-    //strFArgs = "/c ";
-  }
-  else
-#endif
-    strFName = m_filename;
+  CStdString strFName = m_playerFilename;
+  CStdString strFArgs = m_args;
 
-  strFArgs.append(m_args);
+  strFArgs.Replace("{0}", m_item.m_strPath);
+  strFArgs.Replace("{1}", mediaFilename);
+  strFArgs.Replace("{2}", archiveContent);
 
-  int nReplaced = strFArgs.Replace("{0}", mainFile);
-
-  if (!nReplaced)
-    nReplaced = strFArgs.Replace("{1}", mainFile) + strFArgs.Replace("{2}", archiveContent);
-
-  // Maybe the user delibarately set args without replacement sequence. We should add the filename only if strFArgs is empty
+  // Maybe the user deliberately set args without replacement sequence. We should add the filename only if strFArgs is empty
   if (strFArgs.empty())
   {
     strFArgs.append(" \"");
-    strFArgs.append(mainFile);
+    strFArgs.append(mediaFilename);
     strFArgs.append("\"");
   }
 
@@ -586,10 +569,10 @@ bool CExternalPlayer::SetPlayerState(CStdString state)
 
 bool CExternalPlayer::Initialize(TiXmlElement* pConfig)
 {
-  XMLUtils::GetString(pConfig, "filename", m_filename); 
-  if (m_filename.length() > 0)
+  XMLUtils::GetString(pConfig, "filename", m_playerFilename); 
+  if (m_playerFilename.length() > 0)
   {
-    CLog::Log(LOGNOTICE, "ExternalPlayer Filename: %s", m_filename.c_str());
+    CLog::Log(LOGNOTICE, "ExternalPlayer Filename: %s", m_playerFilename.c_str());
   }
   else
   {
@@ -607,7 +590,7 @@ bool CExternalPlayer::Initialize(TiXmlElement* pConfig)
   {
 #ifdef _WIN32
     // Default depends on whether player is a batch file
-    m_hideconsole = m_filename.Right(4) == ".bat";
+    m_hideconsole = m_playerFilename.Right(4) == ".bat";
 #endif
   }
 

@@ -108,7 +108,7 @@ private:
   CGUIDialogOK* m_dialog;
   int m_xPos;
   int m_yPos;
-  CStdString m_filename;
+  CStdString m_playerFilename;
   CStdString m_args;
   bool m_hideconsole;
   bool m_hidexbmc;

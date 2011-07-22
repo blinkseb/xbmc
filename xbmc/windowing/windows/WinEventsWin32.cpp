@@ -51,7 +51,8 @@
 #define EXTKEYPAD(keypad) ((scancode & 0x100)?(mvke):(keypad))
 
 static XBMCKey VK_keymap[XBMCK_LAST];
-static HKL hLayoutUS = NULL;
+static HKL mCurrentKeyboardLayout = NULL;
+static bool mSkipKeyUpEvent = false;
 static XBMCKey Arrows_keymap[4];
 
 static GUID USB_HID_GUID = { 0x4D1E55B2, 0xF16F, 0x11CF, { 0x88, 0xCB, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30 } };
@@ -71,15 +72,7 @@ SHChangeNotifyEntry shcne;
 
 void DIB_InitOSKeymap()
 {
-  char current_layout[KL_NAMELENGTH];
-
-  GetKeyboardLayoutName(current_layout);
-
-  hLayoutUS = LoadKeyboardLayout("00000409", KLF_NOTELLSHELL);
-  if (!hLayoutUS)
-    hLayoutUS = GetKeyboardLayout(0);
-
-  LoadKeyboardLayout(current_layout, KLF_ACTIVATE);
+  mCurrentKeyboardLayout = GetKeyboardLayout(0);
 
   /* Map the VK keysyms */
   for (int i = 0; i < XBMC_arraysize(VK_keymap); ++i)
@@ -237,11 +230,7 @@ void DIB_InitOSKeymap()
 
 static int XBMC_MapVirtualKey(int scancode, int vkey)
 {
-// It isn't clear why the US keyboard layout was being used. This causes
-// problems with e.g. the \ key. I have provisionally switched the code
-// to use the Windows layout.
-// int mvke = MapVirtualKeyEx(scancode & 0xFF, 1, hLayoutUS);
-  int mvke = MapVirtualKeyEx(scancode & 0xFF, 1, NULL);
+  int mvke = MapVirtualKeyEx(scancode & 0xFF, 1, mCurrentKeyboardLayout);
 
   switch(vkey)
   { /* These are always correct */
@@ -281,8 +270,21 @@ static int XBMC_MapVirtualKey(int scancode, int vkey)
 }
 
 static XBMC_keysym *TranslateKey(WPARAM vkey, UINT scancode, XBMC_keysym *keysym, int pressed)
-{ uint16_t mod;
-  uint8_t keystate[256];
+{ 
+  uint16_t  mod;
+  uint8_t   keystate[256];
+  uint16_t  wchars[2];
+
+  GetKeyboardState(keystate);
+
+  // We handle here only non printing key, like delete, page up, etc.
+  
+  // Numpad
+  if ((keystate[VK_NUMLOCK] & 1) && vkey >= VK_NUMPAD0 && vkey <= VK_NUMPAD9)
+    return NULL;
+
+  if (ToUnicodeEx((UINT)vkey, scancode, keystate, (LPWSTR)wchars, sizeof(wchars)/sizeof(wchars[0]), 0, mCurrentKeyboardLayout) != 0)
+    return NULL;
 
   /* Set the keysym information */
   keysym->scancode = (unsigned char) scancode;
@@ -298,26 +300,7 @@ static XBMC_keysym *TranslateKey(WPARAM vkey, UINT scancode, XBMC_keysym *keysym
     keysym->sym = VK_keymap[XBMC_MapVirtualKey(scancode, vkey)];
   }
 
-  // Attempt to convert the keypress to a UNICODE character
-  GetKeyboardState(keystate);
-
-  if ( pressed && XBMC_TranslateUNICODE )
-  { uint16_t  wchars[2];
-
-    /* Numlock isn't taken into account in ToUnicode,
-    * so we handle it as a special case here */
-    if ((keystate[VK_NUMLOCK] & 1) && vkey >= VK_NUMPAD0 && vkey <= VK_NUMPAD9)
-    {
-      keysym->unicode = vkey - VK_NUMPAD0 + '0';
-    }
-    else if (ToUnicode((UINT)vkey, scancode, keystate, (LPWSTR)wchars, sizeof(wchars)/sizeof(wchars[0]), 0) > 0)
-    {
-      keysym->unicode = wchars[0];
-    }
-  }
-
   // Set the modifier bitmap
-
   mod = (uint16_t) XBMCKMOD_NONE;
 
   // If left control and right alt are down this usually means that
@@ -333,8 +316,51 @@ static XBMC_keysym *TranslateKey(WPARAM vkey, UINT scancode, XBMC_keysym *keysym
   }
 
   // Check the remaining modifiers
-  if (keystate[VK_LSHIFT]   & 0x80) mod |= XBMCKMOD_LSHIFT;
-  if (keystate[VK_RSHIFT]   & 0x80) mod |= XBMCKMOD_RSHIFT;
+  if (keystate[VK_RCONTROL] & 0x80) mod |= XBMCKMOD_RCTRL;
+  if (keystate[VK_LMENU]    & 0x80) mod |= XBMCKMOD_LALT;
+  if (keystate[VK_LWIN]     & 0x80) mod |= XBMCKMOD_LSUPER;
+  if (keystate[VK_RWIN]     & 0x80) mod |= XBMCKMOD_LSUPER;
+  keysym->mod = (XBMCMod) mod;
+
+  // Return the updated keysym
+  return keysym;
+}
+
+static XBMC_keysym *TranslateChar(WPARAM vkey, UINT scancode, XBMC_keysym *keysym, int pressed)
+{ uint16_t mod;
+  uint8_t keystate[256];
+
+  /* Set the keysym information */
+  keysym->scancode = (unsigned char) scancode;
+  keysym->unicode = vkey;
+
+  if ((vkey == VK_RETURN) && (scancode & 0x100))
+  {
+    /* No VK_ code for the keypad enter key */
+    keysym->sym = XBMCK_KP_ENTER;
+  }
+  else
+  {
+    keysym->sym = VK_keymap[XBMC_MapVirtualKey(scancode, vkey)];
+  }
+
+  // Set the modifier bitmap
+  mod = (uint16_t) XBMCKMOD_NONE;
+  GetKeyboardState(keystate);
+
+  // If left control and right alt are down this usually means that
+  // AltGr is down
+  if ((keystate[VK_LCONTROL] & 0x80) && (keystate[VK_RMENU] & 0x80))
+  {
+    mod |= XBMCKMOD_MODE;
+  }
+  else
+  {
+    if (keystate[VK_LCONTROL] & 0x80) mod |= XBMCKMOD_LCTRL;
+    if (keystate[VK_RMENU]    & 0x80) mod |= XBMCKMOD_RALT;
+  }
+
+  // Check the remaining modifiers
   if (keystate[VK_RCONTROL] & 0x80) mod |= XBMCKMOD_RCTRL;
   if (keystate[VK_LMENU]    & 0x80) mod |= XBMCKMOD_LALT;
   if (keystate[VK_LWIN]     & 0x80) mod |= XBMCKMOD_LSUPER;
@@ -444,6 +470,8 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
       //deliberate fallthrough
     case WM_KEYDOWN:
     {
+      if (wParam == VK_SHIFT)
+        break;
       switch (wParam)
       {
         case VK_CONTROL:
@@ -451,13 +479,6 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
             wParam = VK_RCONTROL;
           else
             wParam = VK_LCONTROL;
-          break;
-        case VK_SHIFT:
-          /* EXTENDED trick doesn't work here */
-          if (GetKeyState(VK_LSHIFT) & 0x8000)
-            wParam = VK_LSHIFT;
-          else if (GetKeyState(VK_RSHIFT) & 0x8000)
-            wParam = VK_RSHIFT;
           break;
         case VK_MENU:
           if ( lParam & EXTENDED_KEYMASK )
@@ -467,7 +488,8 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
           break;
       }
       XBMC_keysym keysym;
-      TranslateKey(wParam, HIWORD(lParam), &keysym, 1);
+      if (! TranslateKey(wParam, HIWORD(lParam), &keysym, 1))
+        break;
 
       newEvent.type = XBMC_KEYDOWN;
       newEvent.key.keysym = keysym;
@@ -475,42 +497,68 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
     }
     return(0);
 
-    case WM_SYSKEYUP:
-    case WM_KEYUP:
-      {
+    case WM_CHAR:
+    {
       switch (wParam)
       {
         case VK_CONTROL:
-          if ( lParam&EXTENDED_KEYMASK )
+          if ( lParam & EXTENDED_KEYMASK )
             wParam = VK_RCONTROL;
           else
             wParam = VK_LCONTROL;
           break;
-        case VK_SHIFT:
-          {
-            uint32_t scanCodeL = MapVirtualKey(VK_LSHIFT, MAPVK_VK_TO_VSC);
-            uint32_t scanCodeR = MapVirtualKey(VK_RSHIFT, MAPVK_VK_TO_VSC);
-            uint32_t keyCode = (uint32_t)((lParam & 0xFF0000) >> 16);
-            if (keyCode == scanCodeL)
-              wParam = VK_LSHIFT;
-            else if (keyCode == scanCodeR)
-              wParam = VK_RSHIFT;
-          }
-          break;
         case VK_MENU:
-          if ( lParam&EXTENDED_KEYMASK )
+          if ( lParam & EXTENDED_KEYMASK )
             wParam = VK_RMENU;
           else
             wParam = VK_LMENU;
           break;
       }
       XBMC_keysym keysym;
-      TranslateKey(wParam, HIWORD(lParam), &keysym, 1);
+      TranslateChar(wParam, HIWORD(lParam), &keysym, 1);
+
+      newEvent.type = XBMC_KEYDOWN;
+      newEvent.key.keysym = keysym;
+      m_pEventFunc(newEvent);
+      mSkipKeyUpEvent = true;
+    }
+    return(0);
+
+    case WM_SYSKEYUP:
+    case WM_KEYUP:
+    {
+      if (wParam == VK_SHIFT)
+        break;
+      if (mSkipKeyUpEvent)
+      {
+        mSkipKeyUpEvent = false;
+        break;
+      }
+
+      switch (wParam)
+      {
+        case VK_CONTROL:
+          if ( lParam & EXTENDED_KEYMASK )
+            wParam = VK_RCONTROL;
+          else
+            wParam = VK_LCONTROL;
+          break;
+        case VK_MENU:
+          if ( lParam & EXTENDED_KEYMASK )
+            wParam = VK_RMENU;
+          else
+            wParam = VK_LMENU;
+          break;
+      }
+      XBMC_keysym keysym;
+      if (! TranslateKey(wParam, HIWORD(lParam), &keysym, 1))
+        break;
 
       if (wParam == VK_SNAPSHOT)
         newEvent.type = XBMC_KEYDOWN;
       else
         newEvent.type = XBMC_KEYUP;
+
       newEvent.key.keysym = keysym;
       m_pEventFunc(newEvent);
     }
